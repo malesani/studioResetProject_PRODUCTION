@@ -1,0 +1,51 @@
+{
+  "name": "root",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@ckeditor/ckeditor5-build-classic": "^39.0.2",
+    "@ckeditor/ckeditor5-react": "^9.5.0",
+    "@fortawesome/fontawesome-free": "^6.7.2",
+    "bootstrap": "^5.3.3",
+    "cities.json": "^1.1.50",
+    "comuni-province-regioni-italia": "^1.1.0",
+    "country-state-city": "^3.2.1",
+    "fast-deep-equal": "^3.1.3",
+    "iso3166-2-db": "^2.3.11",
+    "italia-cities": "github:angy91m/italia-cities",
+    "jsvat": "^2.5.4",
+    "mdb-react-color-picker": "git+https://oauth2:fsiMpVwZPyxFuNNkGNZD@git.mdbootstrap.com/mdb/react/mdb5/plugins/prd/color-picker",
+    "mdb-react-file-upload": "git+https://oauth2:fsiMpVwZPyxFuNNkGNZD@git.mdbootstrap.com/mdb/react/mdb5/plugins/prd/file-upload",
+    "mdb-react-table-editor": "git+https://oauth2:fsiMpVwZPyxFuNNkGNZD@git.mdbootstrap.com/mdb/react/mdb5/plugins/prd/table-editor",
+    "mdb-react-ui-kit": "git+https://oauth2:yUrvys9e3-fnWrmbyKud@git.mdbootstrap.com/mdb/react/mdb5/prd/mdb5-react-ui-kit-pro-advanced",
+    "pantone-colors": "^1.0.3",
+    "react": "^18.3.1",
+    "react-bootstrap": "^2.10.9",
+    "react-circular-progressbar": "^2.2.0",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.4.0",
+    "sweetalert2": "^11.6.13",
+    "sweetalert2-react-content": "^5.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.21.0",
+    "@types/lodash.isequal": "^4.5.8",
+    "@types/react": "^18.3.21",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.21.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^15.15.0",
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^8.24.1",
+    "vite": "^6.2.0"
+  }
+}
