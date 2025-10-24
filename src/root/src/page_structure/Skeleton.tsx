@@ -25,7 +25,7 @@ const Skeleton: React.FC<SkeletonProps> = ({ children, def_appState, noNavbar, n
   const logo = (isMobile ? logo_small : logo_large);
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
 
-  const { isSuperadmin, loading } = useAuth();
+  const { isSuperadmin, authLoading } = useAuth();
   const [contentEl, setContentEl] = useState<HTMLElement | null>(null);
   const [appState, setAppState] = useState<string>(def_appState ? def_appState : "init");
 
@@ -51,7 +51,7 @@ const Skeleton: React.FC<SkeletonProps> = ({ children, def_appState, noNavbar, n
   //debug
   console.log('appstate: ', appState);
 
-  if (loading) {
+  if (authLoading) {
     return <General_Loading theme="appLoading" />;
   }
 

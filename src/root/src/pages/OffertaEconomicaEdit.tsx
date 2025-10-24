@@ -470,6 +470,19 @@ const OffertaEconomicaEdit: React.FC<OffertaEconomicaEditProps> = () => {
                           />
                         </td>
                         <td>
+                          <GeneralInput<EstimateItem>
+                            style={{ width: "100px" }} // 👈 aquí controlas el ancho
+                            field={{
+                              name: "name",
+                              label: "",
+                              required: true,
+                              type: "text",
+                            }}
+                            formData={prod}
+                            onChange={(name, value) => handleProductChange(index, name, value)}
+                          />
+                        </td>
+                        <td>
                           <GeneralInput
                             style={{ width: "100px" }} // 👈 aquí controlas el ancho
                             field={{

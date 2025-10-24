@@ -1,491 +1,538 @@
-
-import React, { useState } from "react";
+// src/pages/FornitoriLista.tsx
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-    MDBContainer,
-    MDBCard,
-    MDBCardBody,
-    MDBRow,
-    MDBCol,
-    MDBInputGroup,
-    MDBIcon,
-    MDBInput,
-    MDBDropdown,
-    MDBDropdownToggle,
-    MDBDropdownMenu,
-    MDBDropdownItem,
-    MDBBtn,
-    MDBTable,
-    MDBTableHead,
-    MDBTableBody,
-    MDBBadge,
-    MDBModal,
-    MDBModalBody,
-    MDBModalContent,
-    MDBModalDialog,
-    MDBModalHeader,
-    MDBModalTitle
-
+  MDBContainer, MDBCard, MDBRow, MDBCol, MDBInputGroup, MDBIcon, MDBInput,
+  MDBDropdown, MDBDropdownToggle, MDBDropdownMenu, MDBDropdownItem, MDBBtn,
+  MDBBadge, MDBModal, MDBModalBody, MDBModalContent, MDBModalDialog,
+  MDBModalHeader, MDBModalTitle
 } from "mdb-react-ui-kit";
 
-import { GeneralForm, FieldConfig } from '../app_components/GeneralForm';
+import Pagination from "../app_components/TableData/components/Pagination";
+import { GeneralForm, FieldConfig } from "../app_components/GeneralForm";
+import General_Loading from "../app_components/General_Loading";
+import { TableFilters } from "../app_components/TableData/interfaces";
 
+import {
+  APISupplier,
+  get_suppliersListPaginated,
+  create_supplier,
+  update_supplier,
+} from "../api_module/suppliers/SuppliersRequest";
 
-const cards = [
-    {
-        title: "Fornitori Totali",
-        value: 4,
-        color: "success",
-        icon: "users"
-    },
-    {
-        title: "Fornitori Attivi",
-        value: 4,
-        color: "primary",
-        icon: "building"
-    },
-    {
-        title: "Settori Diversi",
-        value: 0,
-        color: "purple",
-        icon: "globe"
-    },
-    {
-        title: "Risultati Filtrati",
-        value: 4,
-        color: "warning",
-        icon: "hashtag"
-    }
+// ⬇️ import UI e request per IMPORT (riuso stessi component/tipi dei prodotti)
+import { Import_FormFields, ImportForm, upload_import_suppliers, run_import_suppliers, UploadResp, RunResp } from '../app_components/imports/ImportsRequest';
+import DryRunReport from "../app_components/imports/DryRunReport";
+
+/* ====== FORM FIELDS ====== */
+const Supplier_FormFields: FieldConfig<APISupplier>[] = [
+  {
+    name: "company_name",
+    label: "Ragione Sociale",
+    required: true,
+    type: "text",
+    grid: { md: 12 },
+    extraElements: [{
+      position: "before",
+      grid: { md: 12 },
+      element: (
+        <div className="d-flex align-items-center mb-1">
+          <MDBIcon fas icon="building" className="me-2" />
+          <h5 className="fs-6 fw-semibold mb-0">Dati aziendali</h5>
+        </div>
+      )
+    }]
+  },
+
+  { name: "cf", label: "Codice Fiscale", type: "text", grid: { md: 6 } },
+  { name: "piva", label: "Partita IVA", type: "text", grid: { md: 6 } },
+
+  { name: "indirizzo", label: "Indirizzo", type: "text", grid: { md: 12 } },
+  { name: "city", label: "Città", type: "text", grid: { md: 4 } },   // API: city ←→ DB: citta
+  { name: "cap", label: "CAP", type: "text", grid: { md: 4 } },
+  { name: "province", label: "Provincia", type: "text", grid: { md: 4 } },
+  { name: "region", label: "Regione", type: "text", grid: { md: 6 } },
+  { name: "state", label: "Stato (Paese)", type: "text", grid: { md: 6 } },
+
+  {
+    name: "ref_name", label: "Referente", type: "text", grid: { md: 6 },
+    extraElements: [{
+      position: "before",
+      grid: { md: 12 },
+      element: (
+        <div className="d-flex align-items-center mb-1">
+          <MDBIcon fas icon="address-card" className="me-2" />
+          <h5 className="fs-6 fw-semibold mb-0">Contatti</h5>
+        </div>
+      )
+    }]
+  },
+  { name: "ref_phone", label: "Telefono", type: "text", grid: { md: 6 } },
+  { name: "ref_fax", label: "Fax", type: "text", grid: { md: 6 } },
+  { name: "ref_email", label: "Email", type: "text", grid: { md: 6 } },
+  { name: "ref_pec", label: "PEC", type: "text", grid: { md: 6 } },
+
+  { name: "note", label: "Note", type: "text_area", grid: { md: 12 } },
 ];
-
-const fornitori = [
-    {
-        ragioneSociale: "Caffè Milano S.r.l.",
-        indirizzo: "Via Dante Alighieri 12",
-        citta: "Milano",
-        cap: "20121",
-        paese: "Italia",
-        email: "info@caffemilano.it",
-        website: "https://www.caffemilano.it",
-        partitaIVA: "12345678901",
-        settore: "Alimentare e Bevande",
-        stato: "Attivo",
-        numeroTelefonico: "+39 02 5551 2233",
-        note: "Fornitore principale di caffè per eventi fieristici",
-    },
-    {
-        ragioneSociale: "TechVision Consulting S.p.A.",
-        indirizzo: "Corso Italia 89",
-        citta: "Torino",
-        cap: "10121",
-        paese: "Italia",
-        email: "sales@techvision.it",
-        website: "https://www.techvision.it",
-        partitaIVA: "09876543210",
-        settore: "Tecnologia e Consulenza IT",
-        stato: "Attivo",
-        numeroTelefonico: "+39 011 6678 992",
-        note: "Partner tecnologico per la gestione delle fiere digitali",
-    },
-    {
-        ragioneSociale: "GreenDesign Studio S.r.l.",
-        indirizzo: "Via Garibaldi 45",
-        citta: "Bologna",
-        cap: "40126",
-        paese: "Italia",
-        email: "contatti@greendesign.it",
-        website: "https://www.greendesign.it",
-        partitaIVA: "11223344556",
-        settore: "Arredamento e Design",
-        stato: "Attivo",
-        numeroTelefonico: "+39 051 7789 005",
-        note: "Fornitore di stand ecologici e sostenibili per esposizioni",
-    },
-];
-
-
-interface FormFornitori {
-    ragioneSociale: string,
-    indirizzo: string,
-    citta: string,
-    cap: string,
-    paese: string,
-    email: string,
-    website: string,
-    partitaIVA: string,
-    settore: string,
-    stato: string,
-    numeroTelefonico: string,
-    note: string
-
-}
 
 export interface ObjectivesListProps {
-    project_uid: string;
+  project_uid: string;
 }
 
-const Fornitori_FormFields: FieldConfig<FormFornitori>[] = [
-    {
-        name: "ragioneSociale", label: "Ragione Sociale", required: true, type: "text", grid: { md: 12 },
-        extraElements: [
-            {
-                position: "before", grid: { md: 12 },
-                element: () => {
-                    return <>
-                        <MDBIcon fas icon="building" className="me-3" />
-                        <h5 className="fs-8 fw-lighter d-inline test">
-                            Dati Amministrativi
-                        </h5>
-                    </>;
-                }
-            }
-        ]
-    },
-    {
-        name: "indirizzo", label: "Indirizzo", required: true, type: "text", grid: { md: 12 },
-    },
-    {
-        name: "citta", label: "Citta", required: true, type: "text", grid: { md: 6 },
-    },
-    {
-        name: "cap", label: "Cap", required: true, type: "text", grid: { md: 6 },
-    },
-    {
-        name: "paese", label: "Paese", required: true, type: "text", grid: { md: 6 },
-    },
-    {
-        name: "email", label: "Email", required: true, type: "text", grid: { md: 6 },
-    },
-    {
-        name: "website", label: "Website", required: true, type: "text", grid: { md: 6 },
-    },
-    {
-        name: "partitaIVA", label: "Partita IVA", required: true, type: "text", grid: { md: 6 },
-    },
-
-    {
-        name: "settore", label: "Settore", required: true, type: "text", grid: { md: 6 },
-    },
-
-    {
-        name: "stato", label: "Stato", required: true, type: "selectbox", grid: { md: 6 },
-        options: [
-            { text: "attivo", value: "attivo" },
-            { text: "inattivo", value: "inattivo" },
-        ]
-    },
-    {
-        name: "numeroTelefonico", label: "Numero Telefonico", required: true, type: "text", grid: { md: 6 },
-        extraElements: [
-            {
-                position: "before", grid: { md: 12 },
-                element: () => {
-                    return <>
-                        <MDBIcon fas icon="user" className="me-3" />
-                        <h5 className="fs-8 fw-lighter d-inline test">
-                            Contatti
-                        </h5>
-                    </>;
-                }
-            }
-        ]
-    },
-    {
-        name: "note", label: "Note", type: "text_area", grid: { md: 12 },
-    },
-
-
-]
-
 const FornitoriLista: React.FC<ObjectivesListProps> = ({ project_uid }) => {
+  // dati lista
+  const [suppliers, setSuppliers] = useState<APISupplier[]>([]);
+  const [total, setTotal] = useState<number>(0);
 
-    const [modalOpen, setModalOpen] = useState<boolean>(false);
+  // filtri + paginazione
+  const [filters, setFilters] = useState<TableFilters<APISupplier> & { region?: string; state?: string; }>({
+    page: 1,
+    per_page: 25,
+    search: "",
+    region: "",
+    state: "",
+  });
 
-    const toggleModal = () => setModalOpen(!modalOpen);
+  // ui state
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    return (
-        <MDBContainer className="py-4">
-            <MDBRow className="mb-4">
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                        <h3 className="fw-bold">Gestione Fornitori</h3>
-                        <p className="text-muted mb-0">
-                            Gestisci tutti i fornitori del sistema
-                        </p>
-                    </div>
-                    <MDBBtn onClick={toggleModal} color="success">
-                        <MDBIcon fas icon="plus" className="me-2" /> Nuovo Fornitore
-                    </MDBBtn>
-                </div>
-            </MDBRow>
+  // modali CRUD
+  const [createOpen, setCreateOpen] = useState(false);
+  const toggleCreate = () => setCreateOpen(o => !o);
 
-            <MDBRow className="g-3 mb-4">
-                {cards.map((card, index) => (
-                    <MDBCol md="3" key={index}>
-                        <MDBCard
-                            className={`border-${card.color} bg-${card.color}-subtle text-${card.color}`}
-                        >
-                            <MDBCardBody className="d-flex align-items-center">
-                                <div
-                                    className={`p-3 bg-${card.color}-light rounded me-3 d-flex align-items-center justify-content-center`}
-                                    style={{
-                                        backgroundColor: `rgba(var(--mdb-${card.color}-rgb), 0.15)`,
-                                        width: "45px",
-                                        height: "45px",
-                                    }}
-                                >
-                                    <MDBIcon fas icon={card.icon} size="lg" />
-                                </div>
-                                <div>
-                                    <p className="fw-bold mb-0">{card.title}</p>
-                                    <h4 className="fw-bold mb-0">{card.value}</h4>
-                                </div>
-                            </MDBCardBody>
-                        </MDBCard>
-                    </MDBCol>
+  const [editOpen, setEditOpen] = useState(false);
+  const [selected, setSelected] = useState<APISupplier | null>(null);
+  const toggleEdit = () => { setEditOpen(o => !o); if (editOpen) setSelected(null); };
+
+  // 🔽 MODALE IMPORT (uguale ai prodotti)
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importUpload, setImportUpload] = useState<UploadResp | null>(null); // job_id + headers + mapping + preview
+  const [dryRun, setDryRun] = useState<RunResp | null>(null);
+  const [commitLoading, setCommitLoading] = useState(false);
+
+  const toggleImportModal = () => {
+    setImportModalOpen((o) => !o);
+    if (!importModalOpen) {
+      setImportUpload(null);
+      setDryRun(null);
+      setCommitLoading(false);
+    }
+  };
+
+  // search debounce
+  const [searchDraft, setSearchDraft] = useState<string>(filters.search ?? "");
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setFilters(prev => ({ ...prev, page: 1, search: searchDraft }));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchDraft]);
+
+  /* =========================
+   * HELPERS DI FETCH
+   * ========================= */
+
+  // 1) helper iniziale (splash)
+  const fetchSuppliersInitial = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const args = {
+        search: filters.search ?? "",
+        page: filters.page ?? 1,
+        per_page: filters.per_page ?? 25,
+        region: filters.region?.trim() ? filters.region : undefined,
+        state: filters.state?.trim() ? filters.state : undefined,
+      };
+      const res = await get_suppliersListPaginated(args);
+      if (res.success && res.data) {
+        setSuppliers(res.data.rows);
+        setTotal(res.data.meta?.items_num ?? 0);
+      } else {
+        throw new Error(res.message || "Errore nel recupero fornitori");
+      }
+    } catch (e: any) {
+      setError(e?.message || "Errore di rete");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 2) helper on-demand (retry, post-create, post-update, post-import)
+  const fetchSuppliersOnDemand = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const args = {
+        search: filters.search ?? "",
+        page: filters.page ?? 1,
+        per_page: filters.per_page ?? 25,
+        region: filters.region?.trim() ? filters.region : undefined,
+        state: filters.state?.trim() ? filters.state : undefined,
+      };
+      const res = await get_suppliersListPaginated(args);
+      if (res.success && res.data) {
+        setSuppliers(res.data.rows);
+        setTotal(res.data.meta?.items_num ?? 0);
+      } else {
+        setError(res.message || "Errore nel recupero fornitori");
+      }
+    } catch (e: any) {
+      setError(e?.message || "Errore di rete");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // primo caricamento
+  useEffect(() => {
+    fetchSuppliersInitial();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // refetch quando cambiano i filtri (dopo il primo render)
+  const didInit = useRef(false);
+  useEffect(() => {
+    if (!didInit.current) { didInit.current = true; return; }
+    fetchSuppliersOnDemand();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.search, filters.page, filters.per_page, filters.region, filters.state]);
+
+  // derive filtri rapidi (region/state) dalle righe in pagina
+  const regionOptions = useMemo(
+    () => Array.from(new Set(suppliers.map(s => s.region).filter(Boolean))) as string[],
+    [suppliers]
+  );
+  const stateOptions = useMemo(
+    () => Array.from(new Set(suppliers.map(s => s.state).filter(Boolean))) as string[],
+    [suppliers]
+  );
+
+  /* ============== IMPORT HANDLERS (come prodotti) ============== */
+
+  // STEP 1: upload + dry-run
+  async function onImportSubmit(fd: ImportForm) {
+    const up = await upload_import_suppliers({
+      ...fd,
+      dry_run: true, // (non è usato in upload ma teniamo stesso shape)
+    });
+
+    if (!up.response.success || !up.data) {
+      return false;
+    }
+
+    setImportUpload(up.data);
+
+    const rr = await run_import_suppliers({
+      job_id: up.data.job_id,
+      mapping: up.data.mapping, // se aggiungi UI mapping, passa quello aggiornato
+      dry_run: true,
+    });
+
+    if (!rr.response.success || !rr.data) {
+      return false;
+    }
+
+    setDryRun(rr.data);
+    return true;
+  }
+
+  // STEP 2: commit
+  async function onConfirmCommit() {
+    if (!importUpload) return;
+    setCommitLoading(true);
+
+    const run = await run_import_suppliers({
+      job_id: importUpload.job_id,
+      mapping: importUpload.mapping,
+      dry_run: false,
+    });
+
+    setCommitLoading(false);
+
+    if (run.response.success) {
+      setImportModalOpen(false);
+      setImportUpload(null);
+      setDryRun(null);
+      fetchSuppliersOnDemand(); // refresh on-demand della tabella
+    } else {
+      // opzionale: mostrare toast/alert
+    }
+  }
+
+  return (
+    <MDBContainer className="py-4">
+      {/* Header */}
+      <MDBRow className="mb-4">
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h3 className="fw-bold">Gestione Fornitori</h3>
+            <p className="text-muted mb-0">Gestisci tutti i fornitori del sistema</p>
+          </div>
+          <div className="d-flex gap-2">
+            <MDBBtn color="light" onClick={toggleImportModal} title="Importa Fornitori">
+              <MDBIcon fas icon="upload" className="me-2" />
+              Importa
+            </MDBBtn>
+            <MDBBtn onClick={toggleCreate} color="success">
+              <MDBIcon fas icon="plus" className="me-2" /> Nuovo Fornitore
+            </MDBBtn>
+          </div>
+        </div>
+      </MDBRow>
+
+      {/* Filtri */}
+      <MDBRow className="align-items-center bg-white p-3 rounded-2 border mb-4 g-2">
+        <MDBCol xs="12" md="6" lg="6">
+          <MDBInputGroup className="w-100">
+            <span className="input-group-text bg-white border-end-0">
+              <MDBIcon fas icon="search" />
+            </span>
+            <MDBInput
+              type="text"
+              placeholder="Cerca per ragione sociale, contatti, città…"
+              className="border-start-0"
+              value={searchDraft}
+              onChange={(e) => setSearchDraft(e.target.value)}
+            />
+          </MDBInputGroup>
+        </MDBCol>
+
+        {/* Region */}
+        <MDBCol xs="6" md="3" lg="3">
+          <MDBDropdown className="w-100">
+            <MDBDropdownToggle color="light" className="w-100 text-start">
+              {filters.region ? `Regione: ${filters.region}` : "Tutte le regioni"}
+            </MDBDropdownToggle>
+            <MDBDropdownMenu>
+              <MDBDropdownItem link onClick={() => setFilters(p => ({ ...p, page: 1, region: "" }))}>
+                — Tutte —
+              </MDBDropdownItem>
+              <>
+                {regionOptions.map(r => (
+                  <MDBDropdownItem key={r} link onClick={() => setFilters(p => ({ ...p, page: 1, region: r }))}>
+                    {r}
+                  </MDBDropdownItem>
                 ))}
-            </MDBRow>
+              </>
+            </MDBDropdownMenu>
+          </MDBDropdown>
+        </MDBCol>
 
-            <MDBRow className="align-items-center bg-white p-3 rounded-2 border mb-4 g-2">
-                {/* Campo di ricerca */}
-                <MDBCol xs="12" md="5" lg="6">
-                    <MDBInputGroup className="w-100">
-                        <span className="input-group-text bg-white border-end-0">
-                            <MDBIcon fas icon="search" />
-                        </span>
-                        <MDBInput
-                            type="text"
-                            placeholder="Cerca fornitori per nome, email, città o settore..."
-                            className="border-start-0"
-                        />
-                    </MDBInputGroup>
-                </MDBCol>
+        {/* State */}
+        <MDBCol xs="6" md="3" lg="3">
+          <MDBDropdown className="w-100">
+            <MDBDropdownToggle color="light" className="w-100 text-start">
+              {filters.state ? `Stato: ${filters.state}` : "Tutti gli stati (Paese)"}
+            </MDBDropdownToggle>
+            <MDBDropdownMenu>
+              <MDBDropdownItem link onClick={() => setFilters(p => ({ ...p, page: 1, state: "" }))}>
+                — Tutti —
+              </MDBDropdownItem>
+              <>
+                {stateOptions.map(s => (
+                  <MDBDropdownItem key={s} link onClick={() => setFilters(p => ({ ...p, page: 1, state: s }))}>
+                    {s}
+                  </MDBDropdownItem>
+                ))}
+              </>
+            </MDBDropdownMenu>
+          </MDBDropdown>
+        </MDBCol>
+      </MDBRow>
 
-                {/* Filtro stato */}
-                <MDBCol xs="6" md="3" lg="2">
-                    <MDBDropdown className="w-100">
-                        <MDBDropdownToggle color="light" className="w-100 text-start">
-                            Tutti gli stati
-                        </MDBDropdownToggle>
-                        <MDBDropdownMenu>
-                            <MDBDropdownItem link>Attivi</MDBDropdownItem>
-                            <MDBDropdownItem link>Inattivi</MDBDropdownItem>
-                        </MDBDropdownMenu>
-                    </MDBDropdown>
-                </MDBCol>
+      {/* Lista */}
+      <MDBRow className="mb-4">
+        <MDBCard className="border rounded-2 bg-white">
+          <div
+            className="d-grid fw-semibold text-muted px-3 py-3 border-bottom"
+            style={{ gridTemplateColumns: "2fr 2fr 2fr 1fr 1fr 0.8fr", fontSize: "0.9rem" }}
+          >
+            <div><MDBIcon fas icon="truck" className="me-2 text-success" />Fornitore</div>
+            <div><MDBIcon fas icon="envelope" className="me-2 text-success" />Contatti</div>
+            <div><MDBIcon fas icon="file-invoice" className="me-2 text-success" />Info</div>
+            <div><MDBIcon fas icon="location-dot" className="me-2 text-success" />Regione</div>
+            <div><MDBIcon fas icon="globe" className="me-2 text-success" />Stato</div>
+            <div><MDBIcon fas icon="cogs" className="me-2 text-success" />Azioni</div>
+          </div>
 
-                {/* Filtro settore */}
-                <MDBCol xs="6" md="3" lg="2">
-                    <MDBDropdown className="w-100">
-                        <MDBDropdownToggle color="light" className="w-100 text-start">
-                            Tutti i settori
-                        </MDBDropdownToggle>
-                        <MDBDropdownMenu>
-                            <MDBDropdownItem link>Commercio</MDBDropdownItem>
-                            <MDBDropdownItem link>Servizi</MDBDropdownItem>
-                            <MDBDropdownItem link>Altro</MDBDropdownItem>
-                        </MDBDropdownMenu>
-                    </MDBDropdown>
-                </MDBCol>
+          {loading && (
+            <div className="d-flex align-items-center justify-content-center gap-3 py-4">
+              <General_Loading theme="formLoading" text="Caricamento Fornitori" />
+            </div>
+          )}
 
-                {/* Botones de acción */}
-                <MDBCol xs="12" md="12" lg="2" className="d-flex justify-content-end flex-wrap">
-                    <div className="d-flex gap-2">
-                        <MDBBtn color="light" className="px-3" title="Esporta">
-                            <MDBIcon fas icon="download" className="me-2" />
-                            Esporta
-                        </MDBBtn>
-                        <MDBBtn color="light" className="px-3" title="Importa">
-                            <MDBIcon fas icon="upload" className="me-2" />
-                            Importa
-                        </MDBBtn>
-                    </div>
-                </MDBCol>
-            </MDBRow>
+          {!loading && error && (
+            <div className="text-danger p-3 d-flex align-items-center gap-2">
+              <MDBIcon fas icon="exclamation-triangle" /> {error}
+              <MDBBtn size="sm" color="danger" className="ms-2" onClick={fetchSuppliersOnDemand}>
+                <MDBIcon fas icon="redo" className="me-2" />Riprova
+              </MDBBtn>
+            </div>
+          )}
 
-            <MDBRow className="mb-4">
-                <MDBCol>
-                    <MDBCard className="border rounded-2 bg-white">
-                        {/* 🔹 Encabezado */}
-                        <div
-                            className="d-grid fw-semibold text-muted px-3 py-3 border-bottom"
-                            style={{
-                                gridTemplateColumns:
-                                    "2.5fr 2fr 1.5fr 1fr 1fr 0.8fr 1fr",
-                                fontSize: "0.9rem",
+          {!loading && !error && suppliers.length === 0 && (
+            <div className="text-muted p-3">Nessun fornitore trovato</div>
+          )}
 
-                            }}
-                        >
-                            <div className="text-dark">
-                                <MDBIcon fas icon="truck" className="me-2 text-success" />
-                                Nome Fornitore
-                            </div>
-                            <div>
-                                <MDBIcon fas icon="envelope" className="me-2 text-success" />
-                                Contatti
-                            </div>
-                            <div>
-                                <MDBIcon fas icon="map-marker-alt" className="me-2 text-success" />
-                                Ubicazione
-                            </div>
-                            <div>
-                                <MDBIcon fas icon="building" className="me-2 text-success" />
-                                Settore
-                            </div>
-                            <div>
-                                <MDBIcon fas icon="file-invoice" className="me-2 text-success" />
-                                P.IVA
-                            </div>
-                            <div>
-                                <MDBIcon fas icon="toggle-on" className="me-2 text-success" />
-                                Stato
-                            </div>
+          {!loading && !error && suppliers.map((s, i) => (
+            <div
+              key={s.supplier_uid}
+              className="d-grid align-items-center px-3 py-3"
+              style={{
+                gridTemplateColumns: "2fr 2fr 2fr 1fr 1fr 0.8fr",
+                borderBottom: "1px solid #f0f0f0",
+                backgroundColor: i % 2 === 0 ? "#fff" : "#fcfcfc",
+              }}
+            >
+              {/* Fornitore */}
+              <div className="d-flex flex-column align-items-start">
+                <div className="fw-bold">{s.company_name}</div>
+                <div className="small">
+                  {(s.indirizzo || "")}
+                  {(s.city || s.cap) && <>, {s.city} {s.cap ? `(${s.cap})` : ""}</>}
+                  {s.province && <> – {s.province}</>}
+                </div>
+              </div>
 
-                            <div>
-                                <MDBIcon fas icon="cogs" className="me-2 text-success" />
-                                Azioni
-                            </div>
-                        </div>
+              {/* Contatti */}
+              <div className="small">
+                {s.ref_name && <div><MDBIcon fas icon="user" className="me-2 text-muted" />{s.ref_name}</div>}
+                {s.ref_email && <div><MDBIcon fas icon="envelope" className="me-2 text-muted" />{s.ref_email}</div>}
+                {s.ref_phone && <div><MDBIcon fas icon="phone" className="me-2 text-muted" />{s.ref_phone}</div>}
+              </div>
 
-                        {/* 🔹 Filas tipo grid */}
-                        {fornitori.map((f, i) => (
-                            <div
-                                key={i}
-                                className="d-grid align-items-center px-3 py-3"
-                                style={{
-                                    gridTemplateColumns:
-                                        "2.5fr 2fr 1.5fr 1fr 1fr 0.8fr 1fr",
-                                    borderBottom: "1px solid #f0f0f0",
-                                    backgroundColor: i % 2 === 0 ? "#fff" : "#fcfcfc",
-                                }}
-                            >
-                                {/* Nome Fornitore */}
-                                <div className="d-flex align-items-center">
-                                    <div
-                                        className="rounded-2 d-flex justify-content-center align-items-center fw-bold text-success me-3"
-                                        style={{
-                                            width: "40px",
-                                            height: "40px",
-                                            backgroundColor: "rgba(25, 135, 84, 0.15)",
-                                        }}
-                                    >
-                                        {f.ragioneSociale.charAt(0).toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <p className="fw-bold mb-0">{f.ragioneSociale}</p>
-                                    </div>
-                                </div>
+              {/* Info */}
+              <div className="small">
+                {s.piva && <div className="d-flex flex-row gap-2"><p className="text-muted mb-0">P.Iva:</p> {s.piva}</div>}
+                {s.cf && <div className="d-flex flex-row gap-2"><p className="text-muted mb-0">CF:</p> {s.cf}</div>}
+              </div>
 
-                                {/* Contatti */}
-                                <div>
-                                    {f.email && (
-                                        <p className="mb-0">
-                                            <MDBIcon fas icon="envelope" className="me-2 text-muted" />
-                                            {f.email}
-                                        </p>
-                                    )}
-                                    {f.numeroTelefonico && (
-                                        <p className="mb-0">
-                                            <MDBIcon fas icon="phone" className="me-2 text-muted" />
-                                            {f.numeroTelefonico}
-                                        </p>
-                                    )}
-                                </div>
+              {/* Regione */}
+              <div className="small">
+                <MDBBadge color="light" className="border text-dark me-2">{s.region || "—"}</MDBBadge>
+              </div>
 
-                                {/* Ubicazione */}
-                                <div>
-                                    <p className="fw-bold mb-0">{f.citta || "-"}</p>
-                                    <p className="text-muted small mb-0">{f.indirizzo}</p>
-                                </div>
+              {/* Stato */}
+              <div className="small">
+                <MDBBadge color="light" className="border text-dark">{s.state || "—"}</MDBBadge>
+              </div>
 
-                                {/* Settore */}
-                                <div className="text-muted">
-                                    {f.settore || "Non specificato"}
-                                </div>
+              {/* Azioni */}
+              <div className="d-flex justify-content-end gap-2">
+                <MDBBtn
+                  size="sm"
+                  color="link"
+                  className="text-muted p-0"
+                  onClick={() => { setSelected(s); setEditOpen(true); }}
+                >
+                  <MDBIcon fas icon="pen" />
+                </MDBBtn>
+              </div>
+            </div>
+          ))}
+        </MDBCard>
+      </MDBRow>
 
-                                {/* P.IVA */}
-                                <div className="text-muted">
-                                    {f.partitaIVA || "Non specificata"}
-                                </div>
+      {/* Pagination */}
+      <div className="d-flex justify-content-end align-items-center p-3">
+        <Pagination
+          setCurrentPage={(page) => setFilters(prev => ({ ...prev, page }))}
+          currentPage={filters.page ?? 1}
+          totalPages={Math.max(1, Math.ceil((total || 0) / (filters.per_page || 25)))}
+        />
+      </div>
 
-                                {/* Stato */}
-                                <div>
-                                    <MDBBadge color="success" light>
-                                        <MDBIcon fas icon="square" className="me-1" /> {f.stato}
-                                    </MDBBadge>
-                                </div>
+      {/* MODALE CREATE */}
+      <MDBModal tabIndex="-1" open={createOpen} setOpen={setCreateOpen}>
+        <MDBModalDialog centered size="lg">
+          <MDBModalContent>
+            <MDBModalHeader>
+              <MDBModalTitle>Nuovo Fornitore</MDBModalTitle>
+              <MDBBtn className="btn-close" color="none" onClick={toggleCreate}></MDBBtn>
+            </MDBModalHeader>
+            <MDBModalBody>
+              <GeneralForm<APISupplier, { project_uid: string }>
+                params={{ project_uid }}
+                mode="create"
+                fields={Supplier_FormFields}
+                createData={create_supplier}
+                onSuccess={async () => {
+                  toggleCreate();
+                  await fetchSuppliersOnDemand(); // refresh on-demand
+                }}
+              />
+            </MDBModalBody>
+          </MDBModalContent>
+        </MDBModalDialog>
+      </MDBModal>
 
+      {/* MODALE UPDATE */}
+      <MDBModal tabIndex="-1" open={editOpen} setOpen={setEditOpen}>
+        <MDBModalDialog centered size="lg">
+          <MDBModalContent>
+            <MDBModalHeader>
+              <MDBModalTitle>Modifica Fornitore</MDBModalTitle>
+              <MDBBtn className="btn-close" color="none" onClick={toggleEdit}></MDBBtn>
+            </MDBModalHeader>
+            <MDBModalBody>
+              {selected && (
+                <GeneralForm<APISupplier, {}>
+                  mode="update"
+                  fields={Supplier_FormFields}
+                  data={selected}
+                  updateData={update_supplier}
+                  onSuccess={async () => {
+                    toggleEdit();
+                    await fetchSuppliersOnDemand(); // refresh on-demand
+                  }}
+                />
+              )}
+            </MDBModalBody>
+          </MDBModalContent>
+        </MDBModalDialog>
+      </MDBModal>
 
-                                {/* Azioni */}
-                                <div className="d-flex gap-2">
-                                    <MDBBtn color="link" size="sm" className="text-success p-0">
-                                        <MDBIcon fas icon="pen" />
-                                    </MDBBtn>
-                                    <MDBBtn color="link" size="sm" className="text-danger p-0">
-                                        <MDBIcon fas icon="trash" />
-                                    </MDBBtn>
-                                </div>
-                            </div>
-                        ))}
-                    </MDBCard>
-                </MDBCol>
-            </MDBRow>
+      {/* MODALE IMPORT FORNITORI */}
+      <MDBModal tabIndex="-1" open={importModalOpen} setOpen={setImportModalOpen}>
+        <MDBModalDialog centered size="lg">
+          <MDBModalContent>
+            <MDBModalHeader>
+              <MDBModalTitle>{dryRun ? 'Anteprima Import (Dry-Run)' : 'Import Fornitori'}</MDBModalTitle>
+              <MDBBtn className="btn-close" color="none" onClick={toggleImportModal}></MDBBtn>
+            </MDBModalHeader>
+            <MDBModalBody>
+              {/* STEP 1: form upload */}
+              {!dryRun && (
+                <GeneralForm<ImportForm, {}>
+                  mode="create"
+                  fields={Import_FormFields}
+                  createData={async (payload) => {
+                    const ok = await onImportSubmit(payload);
+                    return ok
+                      ? { response: { success: true, message: 'File caricato. Eseguita simulazione.' } }
+                      : { response: { success: false, message: 'Errore import.' } };
+                  }}
+                  createBtnProps={{ label: "Carica & Simula", labelSaving: "Elaborazione..." }}
+                  onSuccess={() => { /* gestito dallo stato locale */ }}
+                />
+              )}
 
-            <MDBModal tabIndex="-1" open={modalOpen} setOpen={setModalOpen}>
-                <MDBModalDialog centered size="lg">
-                    <MDBModalContent>
-                        <MDBModalHeader>
-                            <MDBModalTitle>Nuovo Fornitore</MDBModalTitle>
-                            <MDBBtn className="btn-close" color="none" onClick={toggleModal}></MDBBtn>
-                        </MDBModalHeader>
-                        <MDBModalBody className="mx-3">
-                            <div className="row g-3">
-
-                                <GeneralForm<FormFornitori, { project_uid: string }>
-                                    params={{ project_uid }}
-                                    mode="create"
-                                    fields={Fornitori_FormFields}
-                                    createData={async (data) => {
-                                        console.log("Mock createData chiamata con:", data);
-                                        return Promise.resolve({
-                                            data: {
-                                                ragioneSociale: data.ragioneSociale,
-                                                indirizzo: data.indirizzo,
-                                                citta: data.citta,
-                                                cap: data.cap,
-                                                paese: data.paese,
-                                                email: data.email,
-                                                website: data.website,
-                                                partitaIVA: data.partitaIVA,
-                                                settore: data.settore,
-                                                stato: data.stato,
-                                                numeroTelefonico: data.numeroTelefonico,
-                                                note: data.note
-                                            },
-                                            response: {
-                                                success: true,
-                                                message: "Richiesta simulata completata con successo",
-                                            },
-                                        });
-                                    }}
-                                    createBtnProps={{
-                                        label: "Salva  Nuovo Prodotto",
-                                        labelSaving: "Salvataggio in corso",
-                                    }}
-                                    onSuccess={(created) => {
-                                        fornitori.push(created)
-                                    }}
-                                />
-
-                            </div>
-                        </MDBModalBody>
-                    </MDBModalContent>
-                </MDBModalDialog>
-            </MDBModal>
-
-
-        </MDBContainer>
-    );
+              {/* STEP 2: report + conferma */}
+              {dryRun && (
+                <DryRunReport
+                  report={dryRun.report}
+                  onClose={() => setImportModalOpen(false)}
+                  onConfirm={onConfirmCommit}
+                  confirming={commitLoading}
+                />
+              )}
+            </MDBModalBody>
+          </MDBModalContent>
+        </MDBModalDialog>
+      </MDBModal>
+    </MDBContainer>
+  );
 };
-
 
 export default FornitoriLista;

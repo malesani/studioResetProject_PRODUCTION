@@ -335,7 +335,8 @@ export function GeneralForm<T extends Record<string, any>, P extends Record<stri
                   console.log("depsValid", depsValid);
                 }
 
-                const placeholder: SelectData = { value: "unset", text: "-", hidden: (opts.length > 0) };
+                // const placeholder: SelectData = { value: "unset", text: "-", hidden: (opts.length > 0) };
+                const placeholder: SelectData = { value: "unset", text: "-",};
                 const safeOptions: SelectData[] = depsValid ? [placeholder, ...opts] : opts;
 
                 effectiveField = {

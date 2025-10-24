@@ -33,7 +33,7 @@ import {
 import Pagination from "../app_components/TableData/components/Pagination";
 
 import { APIProduct, create_product, update_product, get_productsListPaginated, get_categoryTree } from '../api_module/products/ProductsRequest';
-import { Import_FormFields, ImportForm, upload_import, run_import, UploadResp, RunResp } from '../app_components/imports/ImportsRequest';
+import { Import_FormFields, ImportForm, upload_import_products, run_import_products, UploadResp, RunResp } from '../app_components/imports/ImportsRequest';
 import DryRunReport from '../app_components/imports/DryRunReport';
 
 export interface ObjectivesListProps {
@@ -681,7 +681,7 @@ const MaterialiList: React.FC<ObjectivesListProps> = ({ project_uid }) => {
   // handler submit form: esegue upload + dry-run
   async function onImportSubmit(fd: ImportForm) {
     // 1) upload (crea job e mapping)
-    const up = await upload_import({
+    const up = await upload_import_products({
       ...fd,
       dry_run: true, // irrilevante qui, run lo chiamiamo sotto
     });
@@ -694,7 +694,7 @@ const MaterialiList: React.FC<ObjectivesListProps> = ({ project_uid }) => {
     setImportUpload(up.data);
 
     // 2) run dry
-    const rr = await run_import({
+    const rr = await run_import_products({
       job_id: up.data.job_id,
       mapping: up.data.mapping, // se in futuro avrai UI per mappare, passaci la mappa aggiornata
       dry_run: true,
@@ -712,7 +712,7 @@ const MaterialiList: React.FC<ObjectivesListProps> = ({ project_uid }) => {
   async function onConfirmCommit() {
     if (!importUpload) return;
     setCommitLoading(true);
-    const run = await run_import({
+    const run = await run_import_products({
       job_id: importUpload.job_id,
       mapping: importUpload.mapping, // o mappa aggiornata
       dry_run: false,

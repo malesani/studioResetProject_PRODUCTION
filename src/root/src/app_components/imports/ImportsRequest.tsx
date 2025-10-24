@@ -24,7 +24,12 @@ export type RunReport = {
   inserted: number;
   updated: number;
   skipped: number;
-  errors: Array<{ row: number; art_code?: string | null; errors: string[] }>;
+  errors: Array<{
+    row: number;
+    art_code?: string | null; // prodotti
+    code?: string | null;     // fornitori
+    errors: string[];
+  }>;
 };
 
 export type RunResp = {
@@ -34,71 +39,71 @@ export type RunResp = {
 
 // Campi per GeneralForm
 export const Import_FormFields: FieldConfig<ImportForm>[] = [
-    {
-        name: 'file',
-        label: 'File CSV',
-        type: 'file_upload',
-        required: true,
+  {
+    name: 'file',
+    label: 'File CSV',
+    type: 'file_upload',
+    required: true,
+    grid: { md: 12 },
+    properties: { accept: '.csv,.txt', maxFiles: 1 },
+    validationFeedback: { invalid: 'Carica un file CSV.' },
+    extraElements: [
+      {
+        position: 'before',
         grid: { md: 12 },
-        properties: { accept: '.csv,.txt', maxFiles: 1 },
-        validationFeedback: { invalid: 'Carica un file CSV.' },
-        extraElements: [
-            {
-                position: 'before',
-                grid: { md: 12 },
-                element:
-                    <div className="d-flex align-items-center mb-1" >
-                        <MDBIcon fas icon="file-" className="me-2" />
-                        <h5 className="fs-6 fw-semibold mb-0"> Import CSV Prodotti</h5>
-                    </div>
+        element:
+          <div className="d-flex align-items-center mb-1" >
+            <MDBIcon fas icon="file-" className="me-2" />
+            <h5 className="fs-6 fw-semibold mb-0"> Import CSV Prodotti</h5>
+          </div>
 
-            }
-        ],
-    },
-    {
-        name: 'delimiter',
-        label: 'Separatore',
-        type: 'selectbox',
-        grid: { md: 4 },
-        options: [
-            { text: 'Punto e virgola (;)', value: ';' },
-            { text: 'Virgola (,)', value: ',' },
-            { text: 'Tab (\\t)', value: '\t' },
-        ],
-        properties: { hideChoseSomething: true },
-        validationFeedback: { invalid: 'Seleziona il separatore' },
-        required: true,
-    },
-    {
-        name: 'has_header',
-        label: 'Riga intestazione presente',
-        type: 'checkbox',
-        grid: { md: 4 },
-        required: false,
-    },
-    {
-        name: 'encoding',
-        label: 'Encoding',
-        type: 'selectbox',
-        grid: { md: 4 },
-        options: [
-            { text: 'UTF-8', value: 'UTF-8', defaultSelected: true },
-            { text: 'ISO-8859-1', value: 'ISO-8859-1' },
-        ],
-        properties: { hideChoseSomething: true },
-        required: true,
-    },
-    {
-        name: 'dry_run',
-        label: 'Esegui Dry-Run (simulazione)',
-        type: 'checkbox',
-        grid: { md: 12 },
-    },
+      }
+    ],
+  },
+  {
+    name: 'delimiter',
+    label: 'Separatore',
+    type: 'selectbox',
+    grid: { md: 4 },
+    options: [
+      { text: 'Punto e virgola (;)', value: ';' },
+      { text: 'Virgola (,)', value: ',' },
+      { text: 'Tab (\\t)', value: '\t' },
+    ],
+    properties: { hideChoseSomething: true },
+    validationFeedback: { invalid: 'Seleziona il separatore' },
+    required: true,
+  },
+  {
+    name: 'has_header',
+    label: 'Riga intestazione presente',
+    type: 'checkbox',
+    grid: { md: 4 },
+    required: false,
+  },
+  {
+    name: 'encoding',
+    label: 'Encoding',
+    type: 'selectbox',
+    grid: { md: 4 },
+    options: [
+      { text: 'UTF-8', value: 'UTF-8', defaultSelected: true },
+      { text: 'ISO-8859-1', value: 'ISO-8859-1' },
+    ],
+    properties: { hideChoseSomething: true },
+    required: true,
+  },
+  {
+    name: 'dry_run',
+    label: 'Esegui Dry-Run (simulazione)',
+    type: 'checkbox',
+    grid: { md: 12 },
+  },
 ];
 // ===== API =====
 
 // 1) Upload (CSV/XLSX) + dry-run immediato lato server (noi chiediamo comunque "run" esplicito dopo l'upload)
-export async function upload_import(payload: ImportForm): Promise<DataResponse<UploadResp>> {
+export async function upload_import_products(payload: ImportForm): Promise<DataResponse<UploadResp>> {
   const file = Array.isArray(payload.file) ? payload.file[0] : undefined;
   if (!file) {
     const response: requestResponse = { success: false, message: 'Seleziona un file', error: 'missing file' };
@@ -120,7 +125,7 @@ export async function upload_import(payload: ImportForm): Promise<DataResponse<U
 }
 
 // 2) Run (dry-run o commit)
-export async function run_import(args: {
+export async function run_import_products(args: {
   job_id: string;
   mapping?: Record<string, string | null>;
   delimiter?: string;
@@ -141,4 +146,50 @@ export async function run_import(args: {
 
   const response = await requestFunction('/imports/api/products_import.php', 'POST', 'run', body);
   return { response, data: response.data as RunResp | undefined };
+}
+
+
+// --- IMPORT FORNITORI --- //
+
+export async function upload_import_suppliers(form: ImportForm): Promise<{ response: any; data?: UploadResp }> {
+  const file = Array.isArray(form.file) ? form.file[0] : undefined;
+  if (!file) {
+    const response: requestResponse = { success: false, message: 'Seleziona un file', error: 'missing file' };
+    return { response };
+  }
+
+  const fd = new FormData();
+  fd.append('opt', 'upload_file');
+  fd.append('file', file);
+  fd.append('delimiter', form.delimiter ?? ';');
+  fd.append('has_header', form.has_header === false ? '0' : '1');
+  fd.append('encoding', form.encoding ?? 'UTF-8');
+
+  // niente headers espliciti qui!
+  const res = await fetch('/imports/api/suppliers_import.php', { method: 'POST', body: fd });
+  const json = await res.json(); // { success, message, data? }
+
+  return { response: json, data: json.data as UploadResp | undefined };
+}
+
+
+/** Esecuzione dry-run/commit fornitori */
+export async function run_import_suppliers(args: {
+  job_id: string;
+  mapping?: Record<string, string | null>;
+  dry_run?: boolean;
+}): Promise<{ response: any; data?: RunResp }> {
+  const payload = {
+    opt: 'run',
+    job_id: args.job_id,
+    mapping: args.mapping ?? {},
+    dry_run: args.dry_run ?? true,
+  };
+  const response = await requestFunction(
+    '/imports/api/suppliers_import.php',
+    'POST',
+    'run',
+    payload
+  );
+  return { response, data: response.data ? (response.data as RunResp) : undefined };
 }

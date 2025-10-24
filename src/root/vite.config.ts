@@ -37,6 +37,14 @@ export default defineConfig({
         target: 'http://localhost:4500',
         changeOrigin: true,
       },
+      '/fairs/api': {
+        target: 'http://localhost:4500',
+        changeOrigin: true,
+      },
+      '/suppliers/api': {
+        target: 'http://localhost:4500',
+        changeOrigin: true,
+      },
       '/projects/api': {
         target: 'http://localhost:4500',
         changeOrigin: true,

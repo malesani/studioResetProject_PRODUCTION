@@ -1,4 +1,4 @@
-import { Objective } from '../objectives/constants';
+import { Objective } from '../objectives/objectives';
 
 export const predefinedConcepts: Objective[] = [
   {

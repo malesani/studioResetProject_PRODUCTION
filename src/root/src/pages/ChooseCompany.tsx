@@ -23,18 +23,18 @@ interface CompanyWithLogo extends CompaniesData {
 
 const ChooseCompany: React.FC = () => {
   const { logo_default } = useLogos();
-  const { loading, companiesData, selectCompany } = useAuth();
+  const { authLoading, companiesData, selectCompany } = useAuth();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   useEffect(() => {
-    if (!loading && companiesData.length <= 1) {
+    if (!authLoading && companiesData.length <= 1) {
       navigate('/dashboard', { replace: true });
     }
-  }, [loading, companiesData, navigate]);
+  }, [authLoading, companiesData, navigate]);
 
   // Debug logs
-  console.log('ChooseCompany - loading:', loading);
+  console.log('ChooseCompany - loading:', authLoading);
   console.log('ChooseCompany - raw companiesData:', companiesData);
 
   const handleChooseCompany = async (companyUid: string) => {
@@ -42,7 +42,7 @@ const ChooseCompany: React.FC = () => {
     navigate('/dashboard', { replace: true });
   };
 
-  if (loading) {
+  if (authLoading) {
     return (
       <MDBContainer className="text-center py-5">
         <p>Caricamento aziende…</p>
